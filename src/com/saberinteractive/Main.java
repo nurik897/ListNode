@@ -28,26 +28,24 @@ class ListRand {
     public int count;
 
     public void serialize(OutputStream outputStream) {
+        DataOutputStream dataOutputStream = new DataOutputStream(outputStream);
         HashMap<ListNode, Integer> map = new HashMap<>();
         ListNode temp = this.head;
+
         for (int i = 0; i < this.count; i++) {
             map.put(temp, i);
             temp = temp.next;
         }
+
         try {
             temp = this.head;
-            ByteArrayOutputStream baos = new ByteArrayOutputStream(64);
-            baos.write(this.count);
+            dataOutputStream.writeInt(this.count);
             for (int i = 0; i < this.count; i++) {
-                baos.write(i);
-                baos.write(map.get(temp.rand));
-                baos.write(temp.data.length());
-                baos.write(temp.data.getBytes());
-                System.out.println("writing id:" + i + ", randomId:" + map.get(temp.rand) + ", sizeof data:" + temp.data.length() + ", data:" + temp.data);
+                dataOutputStream.writeInt(i);
+                dataOutputStream.writeInt(map.get(temp.rand));
+                dataOutputStream.writeUTF(temp.data);
                 temp = temp.next;
             }
-            baos.writeTo(outputStream);
-            outputStream.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -55,52 +53,36 @@ class ListRand {
 
     public void deserialize(InputStream inputStream) {
         try {
-            this.count = inputStream.read();
-            ArrayList<Integer> arrayId = new ArrayList<>(Collections.nCopies(this.count,0));
+            DataInputStream dataInputStream = new DataInputStream(inputStream);
+            this.count = dataInputStream.readInt();
             System.out.println("count:" + this.count);
-            int a = -1, i = 0, id = 0, randomId, dataSize = 0;
-            String data = "";
-            while (true) {
-                switch (i) {
-                    case 0:
-                        id = inputStream.read();
-                        a = id;
-                        break;
-                    case 1:
-                        randomId = inputStream.read();
-                        a = randomId;
-                        arrayId.set(id, randomId);
-                        break;
-                    case 2:
-                        dataSize = inputStream.read();
-                        a = dataSize;
-                        break;
-                    case 3:
-                        byte[] b = new byte[dataSize];
-                        if ((a = inputStream.read(b)) != dataSize) break;
-                        data = new String(b);
-                        this.addToNode(data);
-                        System.out.println(data);
-                        break;
-                }
-                i++;
-                if (a == -1) break;
-                else if (i == 4) i = 0;
+            ArrayList<Integer> arrayId = new ArrayList<>(Collections.nCopies(this.count, 0));
+            int id, randomId;
+            String data;
+            for (int i = 0; i < this.count; i++) {
+                id = dataInputStream.readInt();
+                randomId = dataInputStream.readInt();
+                arrayId.set(id, randomId);
+                data = dataInputStream.readUTF();
+                System.out.println(id + " " + randomId + " " + data);
+                this.addToNode(data);
             }
-            System.out.println(arrayId);
+            dataInputStream.close();
             inputStream.close();
-            ArrayList<ListNode> list = new ArrayList<>();
-            ListNode temp = this.head;
-            for (i = 0; i < this.count; i++) {
-                list.add(temp);
-                temp = temp.next;
-            }
-            temp = this.head;
-            for (i = 0; i < this.count; i++) {
-                temp.rand = list.get(i);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
+
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
+        ArrayList<ListNode> list = new ArrayList<>();
+        ListNode temp = this.head;
+        for (int i = 0; i < this.count; i++) {
+            list.add(temp);
+            temp = temp.next;
+        }
+        temp = this.head;
+        for (int i = 0; i < this.count; i++) {
+            temp.rand = list.get(i);
+            temp = temp.next;
         }
     }
 
@@ -167,27 +149,23 @@ class ListRand {
     }
 
     public static void main(String[] args) {
-        ListRand forSereal = new ListRand();
-        ListRand forDeser = new ListRand();
+        ListRand forSerialize = new ListRand();
+        ListRand forDeserialize = new ListRand();
         ListNode temp = null;
         for (int i = 0; i < 10; i++) {
-            temp = forSereal.addToNode(temp);
-            System.out.println(forSereal.count + " : " + temp.data);
+            temp = forSerialize.addToNode(temp);
+            System.out.println(forSerialize.count + " : " + temp.data);
         }
-        forSereal.randomNode();
-        temp = forSereal.head;
-        for (int i = 0; i < forSereal.count; i++) {
+        forSerialize.randomNode();
+        temp = forSerialize.head;
+        for (int i = 0; i < forSerialize.count; i++) {
             System.out.println(i + " : " + temp.data + " my rand : " + temp.rand.data);
             temp = temp.next;
         }
-        forSereal.head.data = "qqqqqqqq";
-        InputStream inputStream;
-        OutputStream outputStream;
+        forSerialize.head.data = "qqqqqqqq";
         try {
-            outputStream = new FileOutputStream("qwe");
-            inputStream = new FileInputStream("qwe");
-            forSereal.serialize(outputStream);
-            forDeser.deserialize(inputStream);
+            forSerialize.serialize(new FileOutputStream("qwe"));
+            forDeserialize.deserialize(new FileInputStream("qwe"));
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         }
