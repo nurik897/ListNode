@@ -14,11 +14,7 @@ class ListNode {
     public String data;
 
     public boolean equals(ListNode elem) {
-        if ((this.prev == elem.prev) && (this.next == elem.next) && (this.rand == elem.rand) && (this.data.equals(elem.data))) {
-            return true;
-        } else {
-            return false;
-        }
+        return (this.prev == elem.prev) && (this.next == elem.next) && (this.rand == elem.rand) && (this.data.equals(elem.data));
     }
 }
 
@@ -40,12 +36,20 @@ class ListRand {
         try {
             temp = this.head;
             dataOutputStream.writeInt(this.count);
+
             for (int i = 0; i < this.count; i++) {
                 dataOutputStream.writeInt(i);
-                dataOutputStream.writeInt(map.get(temp.rand));
+                if (map.get(temp.rand) != null) {
+                    dataOutputStream.writeInt(map.get(temp.rand));
+                } else {
+                    dataOutputStream.writeInt(-1);
+                }
                 dataOutputStream.writeUTF(temp.data);
                 temp = temp.next;
             }
+
+            dataOutputStream.close();
+            outputStream.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -55,37 +59,43 @@ class ListRand {
         try {
             DataInputStream dataInputStream = new DataInputStream(inputStream);
             this.count = dataInputStream.readInt();
-            System.out.println("count:" + this.count);
             ArrayList<Integer> arrayId = new ArrayList<>(Collections.nCopies(this.count, 0));
             int id, randomId;
             String data;
+
             for (int i = 0; i < this.count; i++) {
                 id = dataInputStream.readInt();
                 randomId = dataInputStream.readInt();
                 arrayId.set(id, randomId);
                 data = dataInputStream.readUTF();
-                System.out.println(id + " " + randomId + " " + data);
                 this.addToNode(data);
             }
             dataInputStream.close();
             inputStream.close();
 
+            ArrayList<ListNode> list = new ArrayList<>();
+            ListNode temp = this.head;
+
+            for (int i = 0; i < this.count; i++) {
+                list.add(temp);
+                temp = temp.next;
+            }
+
+            temp = this.head;
+
+            for (int i = 0; i < this.count; i++) {
+                if (arrayId.get(i) != -1) {
+                    temp.rand = list.get(arrayId.get(i));
+                } else {
+                    temp.rand = null;
+                }
+                temp = temp.next;
+            }
+
         } catch (IOException ex) {
             ex.printStackTrace();
         }
-        ArrayList<ListNode> list = new ArrayList<>();
-        ListNode temp = this.head;
-        for (int i = 0; i < this.count; i++) {
-            list.add(temp);
-            temp = temp.next;
-        }
-        temp = this.head;
-        for (int i = 0; i < this.count; i++) {
-            temp.rand = list.get(i);
-            temp = temp.next;
-        }
     }
-
 
     public ListNode getNode(int index) {
         if (index < this.count) {
@@ -97,18 +107,22 @@ class ListRand {
         } else return null;
     }
 
-    public ListNode addToNode(ListNode prev) {
-        if (prev != null) {
-            ListNode temp = new ListNode();
-            temp.prev = prev;
-            temp.next = null;
-            temp.data = String.valueOf(10 + (int) (Math.random() * 1000));
-            temp.rand = null;
-            prev.next = temp;
+    public ListNode addToNodeRandomData() {
+        ListNode temp = new ListNode();
+        temp.next = null;
+        temp.rand = null;
+        temp.data = String.valueOf(10 + (int) (Math.random() * 1000));
+        this.count++;
+        if (this.head != null) {
+            temp.prev = this.tail;
+            this.tail.next = temp;
             this.tail = temp;
-            this.count++;
-            return temp;
-        } else return this.addFirst();
+        } else {
+            temp.prev = null;
+            this.head = temp;
+            this.tail = temp;
+        }
+        return temp;
     }
 
     public void addToNode(String data) {
@@ -127,18 +141,6 @@ class ListRand {
         }
     }
 
-    public ListNode addFirst() {
-        ListNode temp = new ListNode();
-        temp.data = String.valueOf(10 + (int) (Math.random() * 1000));
-        temp.prev = null;
-        temp.next = null;
-        temp.rand = null;
-        this.head = temp;
-        this.tail = temp;
-        this.count++;
-        return temp;
-    }
-
     public void randomNode() {
         Random random = new Random();
         ListNode temp = this.head;
@@ -151,23 +153,29 @@ class ListRand {
     public static void main(String[] args) {
         ListRand forSerialize = new ListRand();
         ListRand forDeserialize = new ListRand();
-        ListNode temp = null;
+        ListNode temp;
         for (int i = 0; i < 10; i++) {
-            temp = forSerialize.addToNode(temp);
+            temp = forSerialize.addToNodeRandomData();
             System.out.println(forSerialize.count + " : " + temp.data);
         }
         forSerialize.randomNode();
-        temp = forSerialize.head;
-        for (int i = 0; i < forSerialize.count; i++) {
-            System.out.println(i + " : " + temp.data + " my rand : " + temp.rand.data);
-            temp = temp.next;
-        }
-        forSerialize.head.data = "qqqqqqqq";
+        forSerialize.head.data = "some data";
+        forSerialize.head.rand = null;
         try {
-            forSerialize.serialize(new FileOutputStream("qwe"));
-            forDeserialize.deserialize(new FileInputStream("qwe"));
+            forSerialize.serialize(new FileOutputStream("filename"));
+            forDeserialize.deserialize(new FileInputStream("filename"));
         } catch (FileNotFoundException e) {
             e.printStackTrace();
+        }
+        ListNode temp1 = forDeserialize.head;
+        temp = forSerialize.head;
+        for (int i = 0; i < forSerialize.count; i++) {
+            System.out.println("ser:" + temp.data + " deser:" + temp1.data);
+            if ((temp.rand != null) && (temp1.rand != null)) {
+                System.out.println(temp.rand.data + "   " + temp1.rand.data);
+            }
+            temp = temp.next;
+            temp1 = temp1.next;
         }
     }
 }
